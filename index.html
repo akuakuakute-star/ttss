@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>TikVoice – Live Comment Reader 🎙️</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg:#0a0a0f; --bg2:#111118; --bg3:#1a1a25; --border:#2a2a3a;
+    --accent:#fe2c55; --accent2:#25f4ee; --accent3:#ff8c00; --gold:#ffd700;
+    --text:#f0f0f8; --muted:#6a6a8a;
+    --glow-r:rgba(254,44,85,.3); --glow-c:rgba(37,244,238,.3);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;overflow-x:hidden;}
+  body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(37,244,238,.03)1px,transparent 1px),linear-gradient(90deg,rgba(37,244,238,.03)1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0;}
+  .app{position:relative;z-index:1;max-width:920px;margin:0 auto;padding:24px 20px;display:flex;flex-direction:column;gap:18px;}
+
+  /* HEADER */
+  .header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+  .logo{display:flex;align-items:center;gap:12px;}
+  .logo-icon{width:44px;height:44px;background:linear-gradient(135deg,var(--accent),#ff006e);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 0 20px var(--glow-r);}
+  .logo-text{font-size:22px;font-weight:800;letter-spacing:-.5px;}
+  .logo-text span{color:var(--accent2);}
+  .header-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .viewers-badge{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--accent3);border:1px solid var(--accent3);padding:5px 12px;border-radius:999px;display:none;}
+  .status-badge{display:flex;align-items:center;gap:8px;padding:6px 14px;border-radius:999px;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;letter-spacing:1px;border:1px solid var(--border);background:var(--bg2);transition:all .3s;}
+  .status-badge.connected{border-color:#00ff88;color:#00ff88;box-shadow:0 0 12px rgba(0,255,136,.2);}
+  .status-badge.connecting{border-color:var(--accent3);color:var(--accent3);}
+  .status-badge.error{border-color:var(--accent);color:var(--accent);}
+  .status-dot{width:6px;height:6px;border-radius:50%;background:var(--muted);}
+  .status-badge.connected .status-dot{background:#00ff88;animation:pulse 1.5s infinite;}
+  .status-badge.connecting .status-dot{background:var(--accent3);animation:pulse .8s infinite;}
+  .status-badge.error .status-dot{background:var(--accent);}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.4;transform:scale(.8);}}
+
+  /* PANELS */
+  .panel{background:var(--bg2);border:1px solid var(--border);border-radius:18px;padding:22px 24px;}
+  .panel-label{font-size:10px;font-weight:700;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:14px;}
+
+  /* CONNECT */
+  .input-row{display:flex;gap:10px;align-items:stretch;}
+  .input-wrap{flex:1;display:flex;align-items:center;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:0 14px;transition:border .2s,box-shadow .2s;}
+  .input-wrap:focus-within{border-color:var(--accent2);box-shadow:0 0 0 3px rgba(37,244,238,.1);}
+  .prefix{font-family:'IBM Plex Mono',monospace;color:var(--accent2);font-size:15px;margin-right:4px;}
+  .text-input{background:transparent;border:none;outline:none;padding:13px 0;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:14px;width:100%;}
+  .text-input::placeholder{color:var(--muted);}
+  .btn{padding:12px 20px;border-radius:10px;border:none;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;font-size:13px;letter-spacing:.5px;transition:all .2s;white-space:nowrap;}
+  .btn:disabled{opacity:.4;cursor:not-allowed;}
+  .btn-primary{background:linear-gradient(135deg,var(--accent),#ff006e);color:#fff;box-shadow:0 4px 20px var(--glow-r);}
+  .btn-primary:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 28px var(--glow-r);}
+  .btn-danger{background:var(--bg3);color:var(--accent);border:1px solid var(--accent);}
+  .btn-danger:hover{background:rgba(254,44,85,.1);}
+  .btn-demo{background:var(--bg3);color:var(--accent2);border:1px solid var(--accent2);font-size:12px;}
+  .btn-demo:hover{background:rgba(37,244,238,.08);}
+  .note{font-size:12px;color:var(--muted);line-height:1.7;padding:12px 14px;background:rgba(37,244,238,.04);border-left:2px solid var(--accent2);border-radius:6px;margin-top:12px;}
+  .note b{color:var(--accent2);}
+
+  /* SETTINGS */
+  .settings-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
+  @media(max-width:580px){.settings-grid{grid-template-columns:1fr 1fr;}}
+  .setting-item{display:flex;flex-direction:column;gap:8px;}
+  .setting-label{font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;}
+  .setting-val{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--accent2);}
+  .slider{-webkit-appearance:none;width:100%;height:4px;background:var(--border);border-radius:2px;outline:none;}
+  .slider::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent2);cursor:pointer;box-shadow:0 0 8px var(--glow-c);}
+  .voice-select{background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 10px;font-size:12px;font-family:'Syne',sans-serif;outline:none;cursor:pointer;width:100%;}
+  .toggle-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .toggle-switch{position:relative;width:40px;height:22px;cursor:pointer;flex-shrink:0;}
+  .toggle-switch input{display:none;}
+  .toggle-track{position:absolute;inset:0;background:var(--bg3);border:1px solid var(--border);border-radius:999px;transition:.3s;}
+  .toggle-thumb{position:absolute;left:3px;top:3px;width:14px;height:14px;background:var(--muted);border-radius:50%;transition:.3s;}
+  .toggle-switch input:checked~.toggle-track{background:rgba(37,244,238,.15);border-color:var(--accent2);}
+  .toggle-switch input:checked~.toggle-thumb{background:var(--accent2);transform:translateX(18px);box-shadow:0 0 8px var(--glow-c);}
+  .toggle-label{font-size:13px;font-weight:600;}
+
+  /* NOW SPEAKING */
+  .now-speaking{background:linear-gradient(135deg,rgba(254,44,85,.08),rgba(37,244,238,.08));border:1px solid rgba(254,44,85,.25);border-radius:14px;padding:18px 20px;display:flex;align-items:center;gap:16px;min-height:76px;position:relative;overflow:hidden;}
+  .now-speaking::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(180deg,var(--accent),var(--accent2));}
+  .speaker-icon{font-size:28px;flex-shrink:0;}
+  .speaking-content{flex:1;min-width:0;}
+  .speaking-user{font-size:11px;font-weight:700;letter-spacing:1.5px;color:var(--accent2);text-transform:uppercase;margin-bottom:4px;}
+  .speaking-text{font-size:16px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .wave-anim{display:none;align-items:flex-end;gap:3px;height:24px;flex-shrink:0;}
+  .wave-bar{width:3px;background:var(--accent);border-radius:2px;animation:wave .8s ease-in-out infinite;}
+  .wave-bar:nth-child(1){height:8px;animation-delay:0s;}
+  .wave-bar:nth-child(2){height:16px;animation-delay:.1s;}
+  .wave-bar:nth-child(3){height:12px;animation-delay:.2s;}
+  .wave-bar:nth-child(4){height:20px;animation-delay:.15s;}
+  .wave-bar:nth-child(5){height:10px;animation-delay:.05s;}
+  @keyframes wave{0%,100%{transform:scaleY(1);}50%{transform:scaleY(.3);}}
+  .silent-state{color:var(--muted);font-style:italic;}
+
+  /* QUEUE */
+  .queue-row{display:flex;align-items:center;gap:10px;padding:8px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;font-size:12px;color:var(--muted);}
+  .queue-count{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:var(--accent3);}
+  .queue-bar{flex:1;height:3px;background:var(--border);border-radius:2px;overflow:hidden;}
+  .queue-fill{height:100%;background:var(--accent3);border-radius:2px;transition:width .4s;}
+  .btn-small{padding:4px 10px;font-size:11px;background:var(--bg3);border:1px solid var(--border);color:var(--muted);border-radius:6px;}
+  .btn-small:hover{border-color:var(--text);color:var(--text);}
+
+  /* MANUAL */
+  .manual-row{display:flex;gap:10px;}
+  .btn-send{background:linear-gradient(135deg,var(--accent2),#00b8b3);color:#000;font-weight:800;font-size:18px;padding:0 18px;border-radius:10px;border:none;cursor:pointer;transition:all .2s;box-shadow:0 4px 16px var(--glow-c);}
+  .btn-send:hover{transform:translateY(-1px);}
+
+  /* FEED TABS */
+  .feed-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .feed-tabs{display:flex;gap:6px;}
+  .tab{padding:6px 14px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.5px;border:1px solid var(--border);background:var(--bg2);color:var(--muted);cursor:pointer;transition:all .2s;}
+  .tab.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .feed-right{display:flex;align-items:center;gap:8px;}
+  .feed-count{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--accent);}
+  .clear-btn{font-size:11px;color:var(--muted);background:none;border:none;cursor:pointer;font-family:'Syne',sans-serif;text-decoration:underline;text-underline-offset:3px;}
+  .clear-btn:hover{color:var(--text);}
+
+  /* COMMENTS */
+  .feed{display:flex;flex-direction:column;gap:8px;max-height:400px;overflow-y:auto;padding-right:4px;}
+  .feed::-webkit-scrollbar{width:4px;}
+  .feed::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+  .comment-item{display:flex;align-items:flex-start;gap:12px;padding:11px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;animation:slideIn .3s ease-out;transition:border-color .2s,background .2s;cursor:pointer;position:relative;}
+  .comment-item:hover{border-color:var(--accent);}
+  .comment-item.speaking{border-color:var(--accent);background:rgba(254,44,85,.06);box-shadow:0 0 12px rgba(254,44,85,.1);}
+  .comment-item.type-gift{border-color:rgba(255,215,0,.3);background:rgba(255,215,0,.04);}
+  .comment-item.type-join{border-color:rgba(37,244,238,.2);}
+  @keyframes slideIn{from{opacity:0;transform:translateX(-12px);}to{opacity:1;transform:translateX(0);}}
+  .avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;flex-shrink:0;color:#fff;}
+  .avatar img{width:32px;height:32px;border-radius:50%;object-fit:cover;}
+  .comment-body{flex:1;min-width:0;}
+  .comment-user{font-size:12px;font-weight:700;color:var(--accent2);margin-bottom:3px;}
+  .comment-text{font-size:14px;line-height:1.4;word-break:break-word;}
+  .comment-meta{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;}
+  .comment-time{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);}
+  .type-tag{font-size:9px;font-weight:700;letter-spacing:1px;padding:2px 7px;border-radius:4px;text-transform:uppercase;}
+  .type-tag.chat{background:rgba(37,244,238,.1);color:var(--accent2);}
+  .type-tag.gift{background:rgba(255,215,0,.15);color:var(--gold);}
+  .type-tag.join{background:rgba(0,255,136,.1);color:#00ff88;}
+  .type-tag.demo{background:rgba(255,140,0,.1);color:var(--accent3);}
+  .repeat-btn{background:none;border:none;cursor:pointer;font-size:14px;opacity:0;transition:opacity .2s;padding:2px;}
+  .comment-item:hover .repeat-btn{opacity:1;}
+  .empty-feed{text-align:center;padding:40px 20px;color:var(--muted);font-size:14px;}
+  .empty-feed .big{font-size:36px;margin-bottom:12px;}
+
+  /* TOAST */
+  .toast{position:fixed;bottom:24px;right:24px;background:var(--bg3);border:1px solid var(--accent2);color:var(--accent2);padding:10px 16px;border-radius:10px;font-size:13px;font-weight:600;opacity:0;transform:translateY(10px);transition:all .3s;pointer-events:none;z-index:100;box-shadow:0 4px 20px var(--glow-c);max-width:320px;}
+  .toast.show{opacity:1;transform:translateY(0);}
+  .toast.error-toast{border-color:var(--accent);color:var(--accent);}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="logo">
+      <div class="logo-icon">🎙️</div>
+      <div>
+        <div class="logo-text">Tik<span>Voice</span></div>
+        <div style="font-size:10px;color:var(--muted);letter-spacing:1px;font-family:'IBM Plex Mono',monospace;">LIVE COMMENT READER</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="viewers-badge" id="viewersBadge">👁 0 viewers</div>
+      <div class="status-badge" id="statusBadge">
+        <div class="status-dot"></div>
+        <span id="statusText">OFFLINE</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONNECT -->
+  <div class="panel">
+    <div class="panel-label">🔗 Koneksi Live TikTok</div>
+    <div class="input-row">
+      <div class="input-wrap">
+        <span class="prefix">@</span>
+        <input class="text-input" id="usernameInput" placeholder="username_tiktok" onkeydown="if(event.key==='Enter')handleConnect()"/>
+      </div>
+      <button class="btn btn-primary" id="connectBtn" onclick="handleConnect()">Connect</button>
+      <button class="btn btn-danger" id="disconnectBtn" style="display:none" onclick="handleDisconnect()">Putus</button>
+      <button class="btn btn-demo" id="demoBtn" onclick="toggleDemo()">▶ Demo</button>
+    </div>
+    <div class="note" id="wsNote">
+      <b>ℹ️ Cara pakai:</b> Jalankan <b>node server.js</b> di terminal, lalu buka <b>http://localhost:3000</b>. Masukkan username TikTok yang sedang live → klik Connect. Atau klik <b>Demo</b> untuk simulasi.
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="panel">
+    <div class="panel-label">⚙️ Pengaturan Suara</div>
+    <div class="settings-grid">
+      <div class="setting-item">
+        <div class="setting-label">Kecepatan <span class="setting-val" id="rateVal">1.0x</span></div>
+        <input type="range" class="slider" id="rateSlider" min="0.5" max="2.5" step="0.1" value="1" oninput="document.getElementById('rateVal').textContent=parseFloat(this.value).toFixed(1)+'x'"/>
+      </div>
+      <div class="setting-item">
+        <div class="setting-label">Pitch <span class="setting-val" id="pitchVal">1.0</span></div>
+        <input type="range" class="slider" id="pitchSlider" min="0.5" max="2" step="0.1" value="1" oninput="document.getElementById('pitchVal').textContent=parseFloat(this.value).toFixed(1)"/>
+      </div>
+      <div class="setting-item">
+        <div class="setting-label">Volume <span class="setting-val" id="volVal">100%</span></div>
+        <input type="range" class="slider" id="volSlider" min="0" max="1" step="0.05" value="1" oninput="document.getElementById('volVal').textContent=Math.round(this.value*100)+'%'"/>
+      </div>
+      <div class="setting-item" style="grid-column:1/-1">
+        <div class="setting-label">Suara Browser</div>
+        <select class="voice-select" id="voiceSelect"></select>
+      </div>
+      <div class="setting-item" style="grid-column:1/-1">
+        <div class="toggle-row">
+          <label class="toggle-switch"><input type="checkbox" id="ttsToggle" checked/><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+          <span class="toggle-label">TTS Aktif</span>
+          &nbsp;
+          <label class="toggle-switch"><input type="checkbox" id="usernameToggle" checked/><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+          <span class="toggle-label">Sebut Nama</span>
+          &nbsp;
+          <label class="toggle-switch"><input type="checkbox" id="giftToggle" checked/><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+          <span class="toggle-label">Baca Gift</span>
+          &nbsp;
+          <label class="toggle-switch"><input type="checkbox" id="joinToggle"/><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+          <span class="toggle-label">Baca Join</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NOW SPEAKING -->
+  <div class="now-speaking" id="nowSpeaking">
+    <span class="speaker-icon" id="speakerIcon">🔇</span>
+    <div class="speaking-content">
+      <div class="speaking-user" id="speakingUser">TIDAK ADA YANG BERBICARA</div>
+      <div class="speaking-text silent-state" id="speakingText">Menunggu komentar masuk...</div>
+    </div>
+    <div class="wave-anim" id="waveAnim">
+      <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+      <div class="wave-bar"></div><div class="wave-bar"></div>
+    </div>
+  </div>
+
+  <!-- QUEUE -->
+  <div class="queue-row">
+    <span>Antrian TTS:</span>
+    <span class="queue-count" id="queueCount">0</span>
+    <div class="queue-bar"><div class="queue-fill" id="queueFill" style="width:0%"></div></div>
+    <button class="btn btn-small" onclick="clearQueue()">Kosongkan</button>
+    <button class="btn btn-small" onclick="skipCurrent()">Skip ⏭</button>
+  </div>
+
+  <!-- MANUAL -->
+  <div>
+    <div class="panel-label">✍️ Tambah Komentar Manual</div>
+    <div class="manual-row">
+      <div class="input-wrap" style="max-width:180px">
+        <span class="prefix" style="font-size:13px">@</span>
+        <input class="text-input" id="manualUser" placeholder="username" style="font-size:13px"/>
+      </div>
+      <div class="input-wrap">
+        <input class="text-input" id="manualText" placeholder="Tulis komentar..." onkeydown="if(event.key==='Enter')addManual()"/>
+      </div>
+      <button class="btn-send" onclick="addManual()">➤</button>
+    </div>
+  </div>
+
+  <!-- FEED -->
+  <div>
+    <div class="feed-header">
+      <div class="feed-tabs">
+        <div class="tab active" data-tab="all" onclick="setTab('all')">Semua</div>
+        <div class="tab" data-tab="chat" onclick="setTab('chat')">Chat</div>
+        <div class="tab" data-tab="gift" onclick="setTab('gift')">Gift 🎁</div>
+      </div>
+      <div class="feed-right">
+        <span class="feed-count" id="feedCount"></span>
+        <button class="clear-btn" onclick="clearFeed()">Hapus semua</button>
+      </div>
+    </div>
+    <div class="feed" id="feed">
+      <div class="empty-feed"><div class="big">💬</div><div>Belum ada komentar.<br/>Sambungkan ke live atau coba mode demo!</div></div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ════════════════════════ STATE ════════════════════════ */
+let comments    = [];
+let ttsQueue    = [];
+let isSpeaking  = false;
+let voices      = [];
+let ws          = null;
+let wsReady     = false;
+let demoInterval = null;
+let isDemoRunning = false;
+let currentTab  = 'all';
+const MAX_QUEUE = 30;
+const COLORS    = ['#fe2c55','#25f4ee','#ff8c00','#9b59b6','#2ecc71','#e74c3c','#3498db','#f1c40f'];
+
+/* ════════════════════════ WEBSOCKET ════════════════════════ */
+function initWebSocket() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  const url   = `${proto}://${location.host}`;
+  ws = new WebSocket(url);
+
+  ws.onopen = () => {
+    wsReady = true;
+    document.getElementById('wsNote').innerHTML =
+      '<b style="color:#00ff88">✅ Terhubung ke server!</b> Masukkan username TikTok yang sedang live lalu klik <b>Connect</b>.';
+  };
+
+  ws.onclose = () => {
+    wsReady = false;
+    setStatus('error', 'SERVER OFF');
+    document.getElementById('wsNote').innerHTML =
+      '<b style="color:var(--accent)">❌ Server tidak berjalan.</b> Jalankan <code>node server.js</code> di terminal lalu refresh halaman ini.';
+  };
+
+  ws.onerror = () => {
+    wsReady = false;
+  };
+
+  ws.onmessage = (e) => {
+    let msg;
+    try { msg = JSON.parse(e.data); } catch { return; }
+    handleWsMessage(msg);
+  };
+}
+
+function wsSend(data) {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(data));
+  }
+}
+
+function handleWsMessage(msg) {
+  switch(msg.type) {
+    case 'init':
+      if (msg.connected) setStatus('connected', `LIVE @${msg.username}`);
+      break;
+
+    case 'connected':
+      setStatus('connected', `LIVE @${msg.username}`);
+      document.getElementById('connectBtn').style.display = 'none';
+      document.getElementById('disconnectBtn').style.display = '';
+      if (msg.viewerCount) {
+        const vb = document.getElementById('viewersBadge');
+        vb.textContent = `👁 ${msg.viewerCount.toLocaleString()} viewers`;
+        vb.style.display = '';
+      }
+      showToast(`✅ Terhubung ke @${msg.username}!`);
+      break;
+
+    case 'disconnected':
+      setStatus('offline', 'OFFLINE');
+      document.getElementById('connectBtn').style.display = '';
+      document.getElementById('disconnectBtn').style.display = 'none';
+      document.getElementById('viewersBadge').style.display = 'none';
+      if (!msg.manual) showToast('🔌 Koneksi TikTok terputus. Mencoba reconnect...', true);
+      break;
+
+    case 'viewers':
+      const vb = document.getElementById('viewersBadge');
+      vb.textContent = `👁 ${(msg.count||0).toLocaleString()} viewers`;
+      vb.style.display = '';
+      break;
+
+    case 'comment':
+      addComment(msg.user || msg.nick, msg.text, 'chat', msg.avatar);
+      break;
+
+    case 'gift':
+      if (document.getElementById('giftToggle').checked)
+        addComment(msg.nick || msg.user, msg.text, 'gift', msg.avatar);
+      break;
+
+    case 'join':
+      if (document.getElementById('joinToggle').checked)
+        addComment(msg.nick || msg.user, msg.text, 'join', msg.avatar);
+      break;
+
+    case 'error':
+      showToast(`❌ ${msg.message}`, true);
+      setStatus('error', 'ERROR');
+      break;
+  }
+}
+
+/* ════════════════════════ CONNECT ════════════════════════ */
+function handleConnect() {
+  const u = document.getElementById('usernameInput').value.trim();
+  if (!u) { showToast('Masukkan username dulu!', true); return; }
+  if (!wsReady) { showToast('Server belum berjalan! Jalankan node server.js', true); return; }
+  setStatus('connecting', 'CONNECTING...');
+  wsSend({ action: 'connect', username: u });
+}
+
+function handleDisconnect() {
+  wsSend({ action: 'disconnect' });
+  document.getElementById('connectBtn').style.display = '';
+  document.getElementById('disconnectBtn').style.display = 'none';
+  document.getElementById('viewersBadge').style.display = 'none';
+  setStatus('offline', 'OFFLINE');
+  showToast('Koneksi diputus.');
+}
+
+/* ════════════════════════ DEMO ════════════════════════ */
+const DEMO_DATA = [
+  ['budi_123','Halo kak, lagi live yaa! 👋','chat'],
+  ['siti_cantik','Keren banget kontennya 🔥','chat'],
+  ['rizky_game','Aku udah follow dari tadi!','chat'],
+  ['maya_flower','Request lagu dong kak!','chat'],
+  ['dimas_bro','Wkwkwk lucu banget','chat'],
+  ['nadia_putri','Semangat terus kak!! 💪','chat'],
+  ['tommy_s','Mantap jiwa kakk','chat'],
+  ['lisa_violet','Ikut nonton dari Surabaya nih','chat'],
+  ['andi_b','Kak share tips donk 🙏','chat'],
+  ['rara_sweet','mengirim 5x Rose Gift 🎁','gift'],
+  ['bagas_comet','Kapan live lagi kak?','chat'],
+  ['fira_b','bergabung ke live 👋','join'],
+  ['joko_w','Ada tutorial gak kak?','chat'],
+  ['dewi_c','mengirim 10x TikTok Galaxy 🎁','gift'],
+  ['arif_tech','Sudah subscribe ya kak!','chat'],
+];
+let demoIdx = 0;
+
+function toggleDemo() {
+  isDemoRunning = !isDemoRunning;
+  const btn = document.getElementById('demoBtn');
+  if (isDemoRunning) {
+    btn.textContent = '⏹ Stop';
+    btn.style.borderColor = '#ff4444'; btn.style.color = '#ff4444';
+    setStatus('connected', 'DEMO MODE');
+    demoInterval = setInterval(() => {
+      const [u, t, tp] = DEMO_DATA[demoIdx % DEMO_DATA.length];
+      if (tp === 'gift' && !document.getElementById('giftToggle').checked) { demoIdx++; return; }
+      if (tp === 'join' && !document.getElementById('joinToggle').checked) { demoIdx++; return; }
+      addComment(u, t, tp);
+      demoIdx++;
+    }, 2600);
+  } else {
+    clearInterval(demoInterval);
+    btn.textContent = '▶ Demo'; btn.style.borderColor = ''; btn.style.color = '';
+    setStatus('offline', 'OFFLINE');
+    showToast('Demo dihentikan');
+  }
+}
+
+/* ════════════════════════ TTS ════════════════════════ */
+function loadVoices() {
+  voices = window.speechSynthesis.getVoices();
+  const sel = document.getElementById('voiceSelect');
+  sel.innerHTML = '';
+  const sorted = [...voices.filter(v=>v.lang.startsWith('id')), ...voices.filter(v=>!v.lang.startsWith('id'))];
+  if (!sorted.length) { sel.innerHTML = '<option>Default</option>'; return; }
+  sorted.forEach(v => {
+    const o = document.createElement('option');
+    o.value = v.name;
+    o.textContent = `${v.name} (${v.lang})`;
+    if (v.lang.startsWith('id')) o.style.color = '#25f4ee';
+    sel.appendChild(o);
+  });
+}
+window.speechSynthesis.onvoiceschanged = loadVoices;
+loadVoices();
+
+function speak(user, text) {
+  if (!document.getElementById('ttsToggle').checked) return;
+  if (ttsQueue.length >= MAX_QUEUE) { showToast('Antrian penuh! Komentar di-skip.', true); return; }
+  ttsQueue.push({ user, text });
+  updateQueueUI();
+  if (!isSpeaking) processQueue();
+}
+
+function processQueue() {
+  if (!ttsQueue.length) { isSpeaking = false; setSilentState(); return; }
+  isSpeaking = true;
+  const item = ttsQueue.shift();
+  updateQueueUI();
+  setSpeakingState(item.user, item.text);
+
+  const sayName = document.getElementById('usernameToggle').checked;
+  const fullText = sayName ? `${item.user} bilang, ${item.text}` : item.text;
+
+  const utt = new SpeechSynthesisUtterance(fullText);
+  utt.rate   = parseFloat(document.getElementById('rateSlider').value);
+  utt.pitch  = parseFloat(document.getElementById('pitchSlider').value);
+  utt.volume = parseFloat(document.getElementById('volSlider').value);
+
+  const selName = document.getElementById('voiceSelect').value;
+  if (selName) { const v = voices.find(v=>v.name===selName); if(v) utt.voice=v; }
+
+  utt.onend  = () => { isSpeaking=false; processQueue(); };
+  utt.onerror= () => { isSpeaking=false; processQueue(); };
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(utt);
+}
+
+function setSpeakingState(user, text) {
+  document.getElementById('speakerIcon').textContent = '🔊';
+  document.getElementById('speakingUser').textContent = `🎙 ${user.toUpperCase()}`;
+  const el = document.getElementById('speakingText');
+  el.textContent = text; el.classList.remove('silent-state');
+  document.getElementById('waveAnim').style.display = 'flex';
+}
+function setSilentState() {
+  document.getElementById('speakerIcon').textContent = '🔇';
+  document.getElementById('speakingUser').textContent = 'TIDAK ADA YANG BERBICARA';
+  const el = document.getElementById('speakingText');
+  el.textContent = 'Menunggu komentar masuk...'; el.classList.add('silent-state');
+  document.getElementById('waveAnim').style.display = 'none';
+}
+function clearQueue() {
+  ttsQueue=[]; window.speechSynthesis.cancel(); isSpeaking=false; setSilentState(); updateQueueUI(); showToast('Antrian dikosongkan');
+}
+function skipCurrent() {
+  window.speechSynthesis.cancel(); isSpeaking=false; processQueue();
+}
+function updateQueueUI() {
+  const n = ttsQueue.length;
+  document.getElementById('queueCount').textContent = n;
+  document.getElementById('queueFill').style.width = Math.min(n/MAX_QUEUE*100,100)+'%';
+}
+
+/* ════════════════════════ COMMENTS ════════════════════════ */
+function addComment(user, text, type='chat', avatar='') {
+  if (!user) user='anonim';
+  if (!text?.trim()) return;
+  comments.unshift({ user, text:text.trim(), type, avatar, time:new Date(), id:Date.now() });
+  renderFeed();
+  speak(user, text.trim());
+}
+
+function addManual() {
+  const u = document.getElementById('manualUser').value.trim() || 'Manual';
+  const t = document.getElementById('manualText').value.trim();
+  if (!t) return;
+  addComment(u, t, 'chat');
+  document.getElementById('manualText').value = '';
+}
+
+/* ════════════════════════ TABS ════════════════════════ */
+function setTab(t) {
+  currentTab = t;
+  document.querySelectorAll('.tab').forEach(el => el.classList.toggle('active', el.dataset.tab===t));
+  renderFeed();
+}
+
+/* ════════════════════════ RENDER ════════════════════════ */
+function renderFeed() {
+  const feed = document.getElementById('feed');
+  const filtered = currentTab==='all' ? comments : comments.filter(c=>c.type===currentTab);
+  document.getElementById('feedCount').textContent = `(${filtered.length})`;
+  if (!filtered.length) {
+    feed.innerHTML='<div class="empty-feed"><div class="big">💬</div><div>Belum ada komentar di tab ini.</div></div>'; return;
+  }
+  feed.innerHTML = filtered.slice(0,100).map((c,i) => {
+    const bg = COLORS[c.user.charCodeAt(0)%COLORS.length];
+    const t  = c.time.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    const typeLabel = {chat:'chat',gift:'gift 🎁',join:'join',demo:'demo'}[c.type]||c.type;
+    const avatarHtml = c.avatar
+      ? `<div class="avatar"><img src="${escHtml(c.avatar)}" onerror="this.parentNode.innerHTML='${c.user[0].toUpperCase()}'"/></div>`
+      : `<div class="avatar" style="background:${bg}">${c.user[0].toUpperCase()}</div>`;
+    return `<div class="comment-item type-${c.type}" onclick="replayComment('${escHtml(c.user)}','${escHtml(c.text)}')">
+      ${avatarHtml}
+      <div class="comment-body">
+        <div class="comment-user">@${escHtml(c.user)}</div>
+        <div class="comment-text">${escHtml(c.text)}</div>
+      </div>
+      <div class="comment-meta">
+        <div class="comment-time">${t}</div>
+        <div class="type-tag ${c.type}">${typeLabel}</div>
+        <button class="repeat-btn" title="Putar ulang">🔁</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function replayComment(user, text) {
+  window.speechSynthesis.cancel(); isSpeaking=false; ttsQueue.unshift({user,text}); processQueue();
+  showToast(`🔁 Putar ulang @${user}`);
+}
+function clearFeed() { comments=[]; renderFeed(); showToast('Riwayat dihapus'); }
+
+/* ════════════════════════ UI HELPERS ════════════════════════ */
+function setStatus(state, label) {
+  const b = document.getElementById('statusBadge');
+  b.className = 'status-badge '+ state;
+  document.getElementById('statusText').textContent = label;
+}
+let toastTimer;
+function showToast(msg, isErr=false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isErr?' error-toast':'');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 3000);
+}
+
+/* ════════════════════════ INIT ════════════════════════ */
+renderFeed();
+initWebSocket();
+</script>
+</body>
+</html>
