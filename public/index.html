@@ -119,6 +119,18 @@
   .toast{position:fixed;bottom:24px;right:24px;background:var(--bg3);border:1px solid var(--accent2);color:var(--accent2);padding:10px 16px;border-radius:10px;font-size:13px;font-weight:600;opacity:0;transform:translateY(10px);transition:all .3s;pointer-events:none;z-index:100;box-shadow:0 4px 20px var(--glow-c);max-width:300px;}
   .toast.show{opacity:1;transform:translateY(0);}
   .toast.err{border-color:var(--accent);color:var(--accent);}
+
+  /* GIFT SOUND EFFECT */
+  .sfx-panel{background:linear-gradient(135deg,rgba(255,215,0,.06),rgba(255,140,0,.06));border:1px solid rgba(255,215,0,.25);border-radius:18px;padding:22px 24px;}
+  .sfx-file-label{display:flex;align-items:center;gap:8px;padding:11px 18px;background:var(--bg3);border:1px dashed rgba(255,215,0,.4);border-radius:10px;cursor:pointer;font-size:13px;font-weight:600;color:var(--gold);transition:all .2s;flex:1;min-width:180px;}
+  .sfx-file-label:hover{border-color:var(--gold);background:rgba(255,215,0,.06);}
+  .sfx-file-label input{display:none;}
+  .sfx-filename{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .sfx-filename.loaded{color:var(--gold);}
+  .btn-sfx-test{background:rgba(255,215,0,.1);border:1px solid rgba(255,215,0,.4);color:var(--gold);border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Syne',sans-serif;transition:all .2s;}
+  .btn-sfx-test:hover{background:rgba(255,215,0,.2);}
+  .btn-sfx-clear{background:var(--bg3);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:8px 12px;font-size:12px;cursor:pointer;font-family:'Syne',sans-serif;transition:all .2s;}
+  .btn-sfx-clear:hover{border-color:var(--accent);color:var(--accent);}
 </style>
 </head>
 <body>
@@ -198,6 +210,45 @@
     </div>
   </div>
 
+
+  <!-- GIFT SOUND EFFECT -->
+  <div class="sfx-panel">
+    <div class="panel-label">🎁 Sound Effect Gift</div>
+    <div style="display:flex;flex-direction:column;gap:14px;">
+
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <label class="sfx-file-label">
+          <span>📂 Upload Sound Effect</span>
+          <input type="file" id="sfxFileInput" accept="audio/*" onchange="loadSfxFile(this)"/>
+        </label>
+        <span class="sfx-filename" id="sfxFilename">Belum ada file</span>
+        <button class="btn-sfx-test" onclick="testGiftSfx()">▶ Test</button>
+        <button class="btn-sfx-clear" onclick="clearGiftSfx()">✕ Hapus</button>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:180px;">
+          <span class="setting-label" style="white-space:nowrap;">Volume SFX</span>
+          <input type="range" class="slider" id="sfxVolSlider" min="0" max="1" step="0.05" value="0.8"
+            oninput="document.getElementById('sfxVolVal').textContent=Math.round(this.value*100)+'%'"/>
+          <span class="setting-val" id="sfxVolVal">80%</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <label class="toggle-switch">
+            <input type="checkbox" id="sfxBeforeTts" checked/>
+            <div class="toggle-track"></div><div class="toggle-thumb"></div>
+          </label>
+          <span class="toggle-label" style="font-size:12px;">SFX sebelum TTS</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="sfxEnabled" checked/>
+            <div class="toggle-track"></div><div class="toggle-thumb"></div>
+          </label>
+          <span class="toggle-label" style="font-size:12px;">SFX Aktif</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- NOW SPEAKING -->
   <div class="now-speaking">
     <span class="speaker-icon" id="speakerIcon">🔇</span>
@@ -265,6 +316,46 @@ let currentTab = 'all';
 let browserVoices = [];
 const MAX_QUEUE = 30;
 const COLORS = ['#fe2c55','#25f4ee','#ff8c00','#9b59b6','#2ecc71','#e74c3c','#3498db','#f1c40f'];
+
+
+/* ══════════ GIFT SOUND EFFECT ══════════ */
+let giftSfxUrl = null;
+
+function loadSfxFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (giftSfxUrl) URL.revokeObjectURL(giftSfxUrl);
+  giftSfxUrl = URL.createObjectURL(file);
+  const el = document.getElementById('sfxFilename');
+  el.textContent = file.name;
+  el.classList.add('loaded');
+  showToast('🎵 Sound effect dimuat: ' + file.name);
+}
+
+function clearGiftSfx() {
+  if (giftSfxUrl) { URL.revokeObjectURL(giftSfxUrl); giftSfxUrl = null; }
+  const el = document.getElementById('sfxFilename');
+  el.textContent = 'Belum ada file'; el.classList.remove('loaded');
+  document.getElementById('sfxFileInput').value = '';
+  showToast('Sound effect dihapus');
+}
+
+function testGiftSfx() {
+  if (!giftSfxUrl) { showToast('Upload file dulu!', true); return; }
+  playGiftSfx();
+}
+
+function playGiftSfx() {
+  if (!giftSfxUrl) return Promise.resolve();
+  if (!document.getElementById('sfxEnabled').checked) return Promise.resolve();
+  return new Promise((resolve) => {
+    const a = new Audio(giftSfxUrl);
+    a.volume = parseFloat(document.getElementById('sfxVolSlider').value);
+    a.onended = resolve;
+    a.onerror = resolve;
+    a.play().catch(resolve);
+  });
+}
 
 /* ══════════ WEBSOCKET ══════════ */
 function initWS() {
@@ -394,10 +485,14 @@ async function processQueue() {
   isSpeaking = true;
   const item = ttsQueue.shift();
   updateQueueUI();
-  const mode = document.getElementById('voiceModeSelect').value;
   try {
-    if(mode === 'server') await speakServer(item.user, item.text);
-    else await speakBrowser(item.user, item.text);
+    if(item.user === '__sfx__') {
+      await playGiftSfx();
+    } else {
+      const mode = document.getElementById('voiceModeSelect').value;
+      if(mode === 'server') await speakServer(item.user, item.text);
+      else await speakBrowser(item.user, item.text);
+    }
   } catch(_) {}
   isSpeaking = false;
   processQueue();
@@ -469,13 +564,27 @@ function toggleDemo(){
 }
 
 /* ══════════ COMMENTS ══════════ */
-function addComment(user,text,type='chat',avatar=''){
+async function addComment(user,text,type='chat',avatar=''){
   if(!user)user='anonim';
   if(!text?.trim())return;
   comments.unshift({user,text:text.trim(),type,avatar,time:new Date(),id:Date.now()});
   if(comments.length>200)comments.length=200;
   renderFeed();
-  speak(user,text.trim());
+  // Gift: play SFX first (if enabled & before-TTS mode), then TTS
+  if(type==='gift' && giftSfxUrl && document.getElementById('sfxEnabled').checked) {
+    const before = document.getElementById('sfxBeforeTts').checked;
+    if(before) {
+      await playGiftSfx();
+      speak(user, text.trim());
+    } else {
+      speak(user, text.trim());
+      // SFX after TTS: queue it
+      ttsQueue.push({user:'__sfx__', text:'__sfx__'});
+      updateQueueUI();
+    }
+  } else {
+    speak(user,text.trim());
+  }
 }
 function addManual(){
   const u=document.getElementById('manualUser').value.trim()||'Manual';
