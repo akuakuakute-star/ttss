@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>TikVoice – Live Comment Reader 🎙️</title>
+<meta name="theme-color" content="#fe2c55"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="TikVoice"/>
+<link rel="manifest" href="/manifest.json"/>
+<link rel="apple-touch-icon" href="/icon-192.svg"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet"/>
+<style>
+  :root{--bg:#0a0a0f;--bg2:#111118;--bg3:#1a1a25;--border:#2a2a3a;--accent:#fe2c55;--accent2:#25f4ee;--accent3:#ff8c00;--gold:#ffd700;--text:#f0f0f8;--muted:#6a6a8a;--glow-r:rgba(254,44,85,.3);--glow-c:rgba(37,244,238,.3);}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;overflow-x:hidden;}
+  body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(37,244,238,.03)1px,transparent 1px),linear-gradient(90deg,rgba(37,244,238,.03)1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0;}
+  .app{position:relative;z-index:1;max-width:920px;margin:0 auto;padding:24px 20px;display:flex;flex-direction:column;gap:18px;}
+  .header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+  .logo{display:flex;align-items:center;gap:12px;}
+  .logo-icon{width:44px;height:44px;background:linear-gradient(135deg,var(--accent),#ff006e);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 0 20px var(--glow-r);}
+  .logo-text{font-size:22px;font-weight:800;letter-spacing:-.5px;}
+  .logo-text span{color:var(--accent2);}
+  .header-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .viewers-badge{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--accent3);border:1px solid var(--accent3);padding:5px 12px;border-radius:999px;display:none;}
+  .status-badge{display:flex;align-items:center;gap:8px;padding:6px 14px;border-radius:999px;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;letter-spacing:1px;border:1px solid var(--border);background:var(--bg2);transition:all .3s;}
+  .status-badge.connected{border-color:#00ff88;color:#00ff88;box-shadow:0 0 12px rgba(0,255,136,.2);}
+  .status-badge.connecting{border-color:var(--accent3);color:var(--accent3);}
+  .status-badge.error{border-color:var(--accent);color:var(--accent);}
+  .status-dot{width:6px;height:6px;border-radius:50%;background:var(--muted);}
+  .status-badge.connected .status-dot{background:#00ff88;animation:pulse 1.5s infinite;}
+  .status-badge.connecting .status-dot{background:var(--accent3);animation:pulse .8s infinite;}
+  .status-badge.error .status-dot{background:var(--accent);}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.4;transform:scale(.8);}}
+  .panel{background:var(--bg2);border:1px solid var(--border);border-radius:18px;padding:22px 24px;}
+  .panel-label{font-size:10px;font-weight:700;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:14px;}
+  .input-row{display:flex;gap:10px;align-items:stretch;flex-wrap:wrap;}
+  .input-wrap{flex:1;min-width:160px;display:flex;align-items:center;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:0 14px;transition:border .2s,box-shadow .2s;}
+  .input-wrap:focus-within{border-color:var(--accent2);box-shadow:0 0 0 3px rgba(37,244,238,.1);}
+  .prefix{font-family:'IBM Plex Mono',monospace;color:var(--accent2);font-size:15px;margin-right:4px;}
+  .text-input{background:transparent;border:none;outline:none;padding:13px 0;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:14px;width:100%;}
+  .text-input::placeholder{color:var(--muted);}
+  .btn{padding:12px 20px;border-radius:10px;border:none;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;font-size:13px;letter-spacing:.5px;transition:all .2s;white-space:nowrap;}
+  .btn:disabled{opacity:.4;cursor:not-allowed;}
+  .btn-primary{background:linear-gradient(135deg,var(--accent),#ff006e);color:#fff;box-shadow:0 4px 20px var(--glow-r);}
+  .btn-primary:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 28px var(--glow-r);}
+  .btn-danger{background:var(--bg3);color:var(--accent);border:1px solid var(--accent);}
+  .btn-danger:hover{background:rgba(254,44,85,.1);}
+  .btn-demo{background:var(--bg3);color:var(--accent2);border:1px solid var(--accent2);font-size:12px;}
+  .btn-demo:hover{background:rgba(37,244,238,.08);}
+  .note{font-size:12px;color:var(--muted);line-height:1.7;padding:12px 14px;background:rgba(37,244,238,.04);border-left:2px solid var(--accent2);border-radius:6px;margin-top:12px;}
+  .note b{color:var(--accent2);}
+  .settings-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
+  @media(max-width:580px){.settings-grid{grid-template-columns:1fr 1fr;}}
+  .setting-item{display:flex;flex-direction:column;gap:8px;}
+  .setting-label{font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;}
+  .setting-val{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--accent2);}
+  .slider{-webkit-appearance:none;width:100%;height:4px;background:var(--border);border-radius:2px;outline:none;}
+  .slider::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent2);cursor:pointer;box-shadow:0 0 8px var(--glow-c);}
+  .lang-select,.voice-mode-select{background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 10px;font-size:12px;font-family:'Syne',sans-serif;outline:none;cursor:pointer;width:100%;}
+  .toggle-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .toggle-switch{position:relative;width:40px;height:22px;cursor:pointer;flex-shrink:0;}
+  .toggle-switch input{display:none;}
+  .toggle-track{position:absolute;inset:0;background:var(--bg3);border:1px solid var(--border);border-radius:999px;transition:.3s;}
+  .toggle-thumb{position:absolute;left:3px;top:3px;width:14px;height:14px;background:var(--muted);border-radius:50%;transition:.3s;}
+  .toggle-switch input:checked~.toggle-track{background:rgba(37,244,238,.15);border-color:var(--accent2);}
+  .toggle-switch input:checked~.toggle-thumb{background:var(--accent2);transform:translateX(18px);box-shadow:0 0 8px var(--glow-c);}
+  .toggle-label{font-size:13px;font-weight:600;}
+  .now-speaking{background:linear-gradient(135deg,rgba(254,44,85,.08),rgba(37,244,238,.08));border:1px solid rgba(254,44,85,.25);border-radius:14px;padding:18px 20px;display:flex;align-items:center;gap:16px;min-height:76px;position:relative;overflow:hidden;}
+  .now-speaking::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(180deg,var(--accent),var(--accent2));}
+  .speaker-icon{font-size:28px;flex-shrink:0;}
+  .speaking-content{flex:1;min-width:0;}
+  .speaking-user{font-size:11px;font-weight:700;letter-spacing:1.5px;color:var(--accent2);text-transform:uppercase;margin-bottom:4px;}
+  .speaking-text{font-size:16px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .wave-anim{display:none;align-items:flex-end;gap:3px;height:24px;flex-shrink:0;}
+  .wave-bar{width:3px;background:var(--accent);border-radius:2px;animation:wave .8s ease-in-out infinite;}
+  .wave-bar:nth-child(1){height:8px;animation-delay:0s}.wave-bar:nth-child(2){height:16px;animation-delay:.1s}.wave-bar:nth-child(3){height:12px;animation-delay:.2s}.wave-bar:nth-child(4){height:20px;animation-delay:.15s}.wave-bar:nth-child(5){height:10px;animation-delay:.05s}
+  @keyframes wave{0%,100%{transform:scaleY(1);}50%{transform:scaleY(.3);}}
+  .silent-state{color:var(--muted);font-style:italic;}
+  .tts-mode-badge{font-size:10px;padding:3px 8px;border-radius:4px;font-weight:700;letter-spacing:1px;}
+  .tts-mode-badge.server{background:rgba(0,255,136,.1);color:#00ff88;border:1px solid rgba(0,255,136,.3);}
+  .tts-mode-badge.browser{background:rgba(255,140,0,.1);color:var(--accent3);border:1px solid rgba(255,140,0,.3);}
+  .queue-row{display:flex;align-items:center;gap:10px;padding:8px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;font-size:12px;color:var(--muted);}
+  .queue-count{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:var(--accent3);}
+  .queue-bar{flex:1;height:3px;background:var(--border);border-radius:2px;overflow:hidden;}
+  .queue-fill{height:100%;background:var(--accent3);border-radius:2px;transition:width .4s;}
+  .btn-small{padding:4px 10px;font-size:11px;background:var(--bg3);border:1px solid var(--border);color:var(--muted);border-radius:6px;cursor:pointer;font-family:'Syne',sans-serif;}
+  .btn-small:hover{border-color:var(--text);color:var(--text);}
+  .manual-row{display:flex;gap:10px;flex-wrap:wrap;}
+  .btn-send{background:linear-gradient(135deg,var(--accent2),#00b8b3);color:#000;font-weight:800;font-size:18px;padding:0 18px;border-radius:10px;border:none;cursor:pointer;transition:all .2s;box-shadow:0 4px 16px var(--glow-c);}
+  .btn-send:hover{transform:translateY(-1px);}
+  .feed-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;}
+  .feed-tabs{display:flex;gap:6px;}
+  .tab{padding:6px 14px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.5px;border:1px solid var(--border);background:var(--bg2);color:var(--muted);cursor:pointer;transition:all .2s;}
+  .tab.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .feed-right{display:flex;align-items:center;gap:8px;}
+  .feed-count{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--accent);}
+  .clear-btn{font-size:11px;color:var(--muted);background:none;border:none;cursor:pointer;font-family:'Syne',sans-serif;text-decoration:underline;text-underline-offset:3px;}
+  .clear-btn:hover{color:var(--text);}
+  .feed{display:flex;flex-direction:column;gap:8px;max-height:400px;overflow-y:auto;padding-right:4px;}
+  .feed::-webkit-scrollbar{width:4px;}
+  .feed::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+  .comment-item{display:flex;align-items:flex-start;gap:12px;padding:11px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;animation:slideIn .3s ease-out;transition:border-color .2s,background .2s;cursor:pointer;}
+  .comment-item:hover{border-color:var(--accent);}
+  .comment-item.speaking{border-color:var(--accent);background:rgba(254,44,85,.06);box-shadow:0 0 12px rgba(254,44,85,.1);}
+  .comment-item.type-gift{border-color:rgba(255,215,0,.3);background:rgba(255,215,0,.04);}
+  .comment-item.type-join{border-color:rgba(37,244,238,.2);}
+  @keyframes slideIn{from{opacity:0;transform:translateX(-12px);}to{opacity:1;transform:translateX(0);}}
+  .avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;flex-shrink:0;color:#fff;}
+  .avatar img{width:32px;height:32px;border-radius:50%;object-fit:cover;}
+  .comment-body{flex:1;min-width:0;}
+  .comment-user{font-size:12px;font-weight:700;color:var(--accent2);margin-bottom:3px;}
+  .comment-text{font-size:14px;line-height:1.4;word-break:break-word;}
+  .comment-meta{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;}
+  .comment-time{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);}
+  .type-tag{font-size:9px;font-weight:700;letter-spacing:1px;padding:2px 7px;border-radius:4px;text-transform:uppercase;}
+  .type-tag.chat{background:rgba(37,244,238,.1);color:var(--accent2);}
+  .type-tag.gift{background:rgba(255,215,0,.15);color:var(--gold);}
+  .type-tag.join{background:rgba(0,255,136,.1);color:#00ff88;}
+  .repeat-btn{background:none;border:none;cursor:pointer;font-size:14px;opacity:0;transition:opacity .2s;padding:2px;}
+  .comment-item:hover .repeat-btn{opacity:1;}
+  .empty-feed{text-align:center;padding:40px 20px;color:var(--muted);font-size:14px;}
+  .empty-feed .big{font-size:36px;margin-bottom:12px;}
+  .toast{position:fixed;bottom:24px;right:24px;background:var(--bg3);border:1px solid var(--accent2);color:var(--accent2);padding:10px 16px;border-radius:10px;font-size:13px;font-weight:600;opacity:0;transform:translateY(10px);transition:all .3s;pointer-events:none;z-index:100;box-shadow:0 4px 20px var(--glow-c);max-width:300px;}
+  .toast.show{opacity:1;transform:translateY(0);}
+  .toast.err{border-color:var(--accent);color:var(--accent);}
+
+  /* GIFT SOUND EFFECT */
+  .sfx-panel{background:linear-gradient(135deg,rgba(255,215,0,.06),rgba(255,140,0,.06));border:1px solid rgba(255,215,0,.25);border-radius:18px;padding:22px 24px;}
+  .sfx-file-label{display:flex;align-items:center;gap:8px;padding:11px 18px;background:var(--bg3);border:1px dashed rgba(255,215,0,.4);border-radius:10px;cursor:pointer;font-size:13px;font-weight:600;color:var(--gold);transition:all .2s;flex:1;min-width:180px;}
+  .sfx-file-label:hover{border-color:var(--gold);background:rgba(255,215,0,.06);}
+  .sfx-file-label input{display:none;}
+  .sfx-filename{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .sfx-filename.loaded{color:var(--gold);}
+  .btn-sfx-test{background:rgba(255,215,0,.1);border:1px solid rgba(255,215,0,.4);color:var(--gold);border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Syne',sans-serif;transition:all .2s;}
+  .btn-sfx-test:hover{background:rgba(255,215,0,.2);}
+  .btn-sfx-clear{background:var(--bg3);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:8px 12px;font-size:12px;cursor:pointer;font-family:'Syne',sans-serif;transition:all .2s;}
+  .btn-sfx-clear:hover{border-color:var(--accent);color:var(--accent);}
+
+  /* INSTALL BANNER */
+  .install-banner{display:none;align-items:center;gap:12px;padding:14px 18px;background:linear-gradient(135deg,rgba(254,44,85,.12),rgba(37,244,238,.12));border:1px solid rgba(37,244,238,.3);border-radius:14px;animation:slideIn .4s ease-out;}
+  .install-banner.show{display:flex;}
+  .install-text{flex:1;font-size:13px;line-height:1.5;}
+  .install-text b{color:var(--accent2);}
+  .btn-install{background:linear-gradient(135deg,var(--accent2),#00b8b3);color:#000;font-weight:800;font-size:13px;padding:10px 18px;border-radius:9px;border:none;cursor:pointer;white-space:nowrap;font-family:'Syne',sans-serif;}
+  .btn-install:hover{opacity:.9;}
+  .btn-dismiss{background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:4px;line-height:1;}
+  /* WAKE LOCK indicator */
+  .wakelock-badge{display:none;font-size:10px;font-weight:700;letter-spacing:1px;padding:4px 10px;border-radius:999px;background:rgba(0,255,136,.1);color:#00ff88;border:1px solid rgba(0,255,136,.3);font-family:'IBM Plex Mono',monospace;}
+  .wakelock-badge.active{display:inline-block;}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="header">
+    <div class="logo">
+      <div class="logo-icon">🎙️</div>
+      <div>
+        <div class="logo-text">Tik<span>Voice</span></div>
+        <div style="font-size:10px;color:var(--muted);letter-spacing:1px;font-family:'IBM Plex Mono',monospace;">LIVE COMMENT READER</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="viewers-badge" id="viewersBadge">👁 0 viewers</div>
+      <span class="tts-mode-badge server" id="ttsBadge">🔊 SERVER TTS</span>
+      <span class="wakelock-badge" id="wakelockBadge">🔒 AWAKE</span>
+      <div class="status-badge" id="statusBadge">
+        <div class="status-dot"></div>
+        <span id="statusText">OFFLINE</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- INSTALL BANNER -->
+  <div class="install-banner" id="installBanner">
+    <div style="font-size:28px">📲</div>
+    <div class="install-text"><b>Install TikVoice sebagai App!</b><br/>Jalan di background, tidak akan ditutup Android secara otomatis.</div>
+    <button class="btn-install" id="installBtn" onclick="doInstall()">Install</button>
+    <button class="btn-dismiss" onclick="dismissInstall()" title="Tutup">✕</button>
+  </div>
+
+  <!-- CONNECT -->
+  <div class="panel">
+    <div class="panel-label">🔗 Koneksi Live TikTok</div>
+    <div class="input-row">
+      <div class="input-wrap">
+        <span class="prefix">@</span>
+        <input class="text-input" id="usernameInput" placeholder="username_tiktok" onkeydown="if(event.key==='Enter')handleConnect()"/>
+      </div>
+      <button class="btn btn-primary" id="connectBtn" onclick="handleConnect()">Connect</button>
+      <button class="btn btn-danger" id="disconnectBtn" style="display:none" onclick="handleDisconnect()">Putus</button>
+      <button class="btn btn-demo" id="demoBtn" onclick="toggleDemo()">▶ Demo</button>
+    </div>
+    <div class="note" id="wsNote">
+      <b>ℹ️</b> Jalankan <b>node server.js</b> lalu buka <b>http://localhost:3000</b>. Suara dihasilkan server → <b>tetap jalan meski Chrome di-background ✅</b>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="panel">
+    <div class="panel-label">⚙️ Pengaturan TTS</div>
+    <div class="settings-grid">
+      <div class="setting-item">
+        <div class="setting-label">Bahasa TTS</div>
+        <select class="lang-select" id="langSelect">
+          <option value="id" selected>🇮🇩 Indonesia</option>
+          <option value="en">🇺🇸 English</option>
+          <option value="jv">🌴 Jawa</option>
+          <option value="su">🌄 Sunda</option>
+        </select>
+      </div>
+      <div class="setting-item">
+        <div class="setting-label">Mode TTS</div>
+        <select class="voice-mode-select" id="voiceModeSelect" onchange="updateTtsMode()">
+          <option value="server" selected>🖥 Server (background-safe)</option>
+          <option value="browser">🌐 Browser (offline)</option>
+        </select>
+      </div>
+      <div class="setting-item">
+        <div class="setting-label">Volume <span class="setting-val" id="volVal">100%</span></div>
+        <input type="range" class="slider" id="volSlider" min="0" max="1" step="0.05" value="1" oninput="document.getElementById('volVal').textContent=Math.round(this.value*100)+'%'"/>
+      </div>
+      <div class="setting-item" style="grid-column:1/-1">
+        <div class="toggle-row">
+          <label class="toggle-switch"><input type="checkbox" id="ttsToggle" checked/><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+          <span class="toggle-label">TTS Aktif</span>&nbsp;
+          <label class="toggle-switch"><input type="checkbox" id="usernameToggle" checked/><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+          <span class="toggle-label">Sebut Nama</span>&nbsp;
+          <label class="toggle-switch"><input type="checkbox" id="giftToggle" checked/><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+          <span class="toggle-label">Baca Gift</span>&nbsp;
+          <label class="toggle-switch"><input type="checkbox" id="joinToggle"/><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+          <span class="toggle-label">Baca Join</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- GIFT SOUND EFFECT -->
+  <div class="sfx-panel">
+    <div class="panel-label">🎁 Sound Effect Gift</div>
+    <div style="display:flex;flex-direction:column;gap:14px;">
+
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <label class="sfx-file-label">
+          <span>📂 Upload Sound Effect</span>
+          <input type="file" id="sfxFileInput" accept="audio/*" onchange="loadSfxFile(this)"/>
+        </label>
+        <span class="sfx-filename" id="sfxFilename">Belum ada file</span>
+        <button class="btn-sfx-test" onclick="testGiftSfx()">▶ Test</button>
+        <button class="btn-sfx-clear" onclick="clearGiftSfx()">✕ Hapus</button>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:180px;">
+          <span class="setting-label" style="white-space:nowrap;">Volume SFX</span>
+          <input type="range" class="slider" id="sfxVolSlider" min="0" max="1" step="0.05" value="0.8"
+            oninput="document.getElementById('sfxVolVal').textContent=Math.round(this.value*100)+'%'"/>
+          <span class="setting-val" id="sfxVolVal">80%</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <label class="toggle-switch">
+            <input type="checkbox" id="sfxBeforeTts" checked/>
+            <div class="toggle-track"></div><div class="toggle-thumb"></div>
+          </label>
+          <span class="toggle-label" style="font-size:12px;">SFX sebelum TTS</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="sfxEnabled" checked/>
+            <div class="toggle-track"></div><div class="toggle-thumb"></div>
+          </label>
+          <span class="toggle-label" style="font-size:12px;">SFX Aktif</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NOW SPEAKING -->
+  <div class="now-speaking">
+    <span class="speaker-icon" id="speakerIcon">🔇</span>
+    <div class="speaking-content">
+      <div class="speaking-user" id="speakingUser">TIDAK ADA YANG BERBICARA</div>
+      <div class="speaking-text silent-state" id="speakingText">Menunggu komentar masuk...</div>
+    </div>
+    <div class="wave-anim" id="waveAnim">
+      <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+      <div class="wave-bar"></div><div class="wave-bar"></div>
+    </div>
+  </div>
+
+  <!-- QUEUE -->
+  <div class="queue-row">
+    <span>Antrian:</span>
+    <span class="queue-count" id="queueCount">0</span>
+    <div class="queue-bar"><div class="queue-fill" id="queueFill" style="width:0%"></div></div>
+    <button class="btn-small" onclick="clearQueue()">Kosongkan</button>
+    <button class="btn-small" onclick="skipCurrent()">Skip ⏭</button>
+  </div>
+
+  <!-- MANUAL -->
+  <div>
+    <div class="panel-label">✍️ Tambah Komentar Manual</div>
+    <div class="manual-row">
+      <div class="input-wrap" style="max-width:180px">
+        <span class="prefix" style="font-size:13px">@</span>
+        <input class="text-input" id="manualUser" placeholder="username" style="font-size:13px"/>
+      </div>
+      <div class="input-wrap">
+        <input class="text-input" id="manualText" placeholder="Tulis komentar..." onkeydown="if(event.key==='Enter')addManual()"/>
+      </div>
+      <button class="btn-send" onclick="addManual()">➤</button>
+    </div>
+  </div>
+
+  <!-- FEED -->
+  <div>
+    <div class="feed-header">
+      <div class="feed-tabs">
+        <div class="tab active" data-tab="all" onclick="setTab('all')">Semua</div>
+        <div class="tab" data-tab="chat" onclick="setTab('chat')">Chat</div>
+        <div class="tab" data-tab="gift" onclick="setTab('gift')">Gift 🎁</div>
+      </div>
+      <div class="feed-right">
+        <span class="feed-count" id="feedCount"></span>
+        <button class="clear-btn" onclick="clearFeed()">Hapus semua</button>
+      </div>
+    </div>
+    <div class="feed" id="feed">
+      <div class="empty-feed"><div class="big">💬</div><div>Belum ada komentar.<br/>Sambungkan ke live atau coba mode demo!</div></div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ══════════ STATE ══════════ */
+let comments = [], ttsQueue = [], isSpeaking = false;
+let ws = null, wsReady = false;
+let demoInterval = null, isDemoRunning = false;
+let currentAudio = null;
+let currentTab = 'all';
+let browserVoices = [];
+const MAX_QUEUE = 30;
+const COLORS = ['#fe2c55','#25f4ee','#ff8c00','#9b59b6','#2ecc71','#e74c3c','#3498db','#f1c40f'];
+
+
+/* ══════════ GIFT SOUND EFFECT ══════════ */
+let giftSfxUrl = null;
+
+function loadSfxFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (giftSfxUrl) URL.revokeObjectURL(giftSfxUrl);
+  giftSfxUrl = URL.createObjectURL(file);
+  const el = document.getElementById('sfxFilename');
+  el.textContent = file.name;
+  el.classList.add('loaded');
+  showToast('🎵 Sound effect dimuat: ' + file.name);
+}
+
+function clearGiftSfx() {
+  if (giftSfxUrl) { URL.revokeObjectURL(giftSfxUrl); giftSfxUrl = null; }
+  const el = document.getElementById('sfxFilename');
+  el.textContent = 'Belum ada file'; el.classList.remove('loaded');
+  document.getElementById('sfxFileInput').value = '';
+  showToast('Sound effect dihapus');
+}
+
+function testGiftSfx() {
+  if (!giftSfxUrl) { showToast('Upload file dulu!', true); return; }
+  playGiftSfx();
+}
+
+function playGiftSfx() {
+  if (!giftSfxUrl) return Promise.resolve();
+  if (!document.getElementById('sfxEnabled').checked) return Promise.resolve();
+  return new Promise((resolve) => {
+    const a = new Audio(giftSfxUrl);
+    a.volume = parseFloat(document.getElementById('sfxVolSlider').value);
+    a.onended = resolve;
+    a.onerror = resolve;
+    a.play().catch(resolve);
+  });
+}
+
+/* ══════════ WEBSOCKET ══════════ */
+function initWS() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}`);
+  ws.onopen = () => {
+    wsReady = true;
+    document.getElementById('wsNote').innerHTML =
+      '<b style="color:#00ff88">✅ Server aktif!</b> Masukkan username TikTok yang sedang live lalu klik <b>Connect</b>. Suara tetap jalan meski Chrome di-background 🎉';
+  };
+  ws.onclose = () => {
+    wsReady = false;
+    setStatus('error','SERVER OFF');
+    document.getElementById('wsNote').innerHTML =
+      '<b style="color:var(--accent)">❌ Server mati.</b> Jalankan <code>node server.js</code> lalu refresh halaman ini.';
+  };
+  ws.onmessage = (e) => {
+    let msg; try { msg = JSON.parse(e.data); } catch { return; }
+    handleMsg(msg);
+  };
+}
+
+function wsSend(data) { if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(data)); }
+
+function handleMsg(msg) {
+  switch(msg.type) {
+    case 'init': if(msg.connected) setStatus('connected',`LIVE @${msg.username}`); break;
+    case 'connected':
+      setStatus('connected',`LIVE @${msg.username}`);
+      document.getElementById('connectBtn').style.display='none';
+      document.getElementById('disconnectBtn').style.display='';
+      if(msg.viewerCount){ const vb=document.getElementById('viewersBadge'); vb.textContent=`👁 ${msg.viewerCount.toLocaleString()} viewers`; vb.style.display=''; }
+      showToast(`✅ Terhubung ke @${msg.username}!`); break;
+    case 'disconnected':
+      setStatus('offline','OFFLINE');
+      document.getElementById('connectBtn').style.display='';
+      document.getElementById('disconnectBtn').style.display='none';
+      document.getElementById('viewersBadge').style.display='none';
+      if(!msg.manual) showToast('🔌 Terputus. Mencoba reconnect...',true); break;
+    case 'viewers': const vb=document.getElementById('viewersBadge'); vb.textContent=`👁 ${(msg.count||0).toLocaleString()} viewers`; vb.style.display=''; break;
+    case 'comment': addComment(msg.user||msg.nick, msg.text,'chat',msg.avatar); break;
+    case 'gift': if(document.getElementById('giftToggle').checked) addComment(msg.nick||msg.user,msg.text,'gift',msg.avatar); break;
+    case 'join': if(document.getElementById('joinToggle').checked) addComment(msg.nick||msg.user,msg.text,'join',msg.avatar); break;
+    case 'error': showToast(`❌ ${msg.message}`,true); setStatus('error','ERROR'); break;
+  }
+}
+
+/* ══════════ CONNECT ══════════ */
+function handleConnect() {
+  const u = document.getElementById('usernameInput').value.trim();
+  if(!u){ showToast('Masukkan username dulu!',true); return; }
+  if(!wsReady){ showToast('Server belum jalan! Ketik: node server.js',true); return; }
+  setStatus('connecting','CONNECTING...');
+  wsSend({action:'connect',username:u});
+}
+function handleDisconnect() {
+  wsSend({action:'disconnect'});
+  document.getElementById('connectBtn').style.display='';
+  document.getElementById('disconnectBtn').style.display='none';
+  document.getElementById('viewersBadge').style.display='none';
+  setStatus('offline','OFFLINE');
+  showToast('Koneksi diputus.');
+}
+
+/* ══════════ TTS MODE ══════════ */
+function updateTtsMode() {
+  const mode = document.getElementById('voiceModeSelect').value;
+  const badge = document.getElementById('ttsBadge');
+  if(mode === 'server'){
+    badge.textContent = '🔊 SERVER TTS'; badge.className = 'tts-mode-badge server';
+  } else {
+    badge.textContent = '🌐 BROWSER TTS'; badge.className = 'tts-mode-badge browser';
+  }
+}
+
+/* ══════════ TTS - SERVER (background-safe) ══════════ */
+async function speakServer(user, text) {
+  const sayName = document.getElementById('usernameToggle').checked;
+  const fullText = sayName ? `${user} bilang, ${text}` : text;
+  const lang = document.getElementById('langSelect').value;
+  const vol  = parseFloat(document.getElementById('volSlider').value);
+
+  setSpeakingState(user, text);
+
+  return new Promise((resolve) => {
+    const url = `/api/tts?text=${encodeURIComponent(fullText)}&lang=${lang}`;
+    const audio = new Audio(url);
+    audio.volume = vol;
+    currentAudio = audio;
+
+    audio.onended = () => { currentAudio = null; resolve(); };
+    audio.onerror = () => { currentAudio = null; resolve(); };
+
+    // Perlu user gesture pertama kali — sudah di-handle oleh unlock di bawah
+    audio.play().catch(() => resolve());
+  });
+}
+
+/* ══════════ TTS - BROWSER (fallback) ══════════ */
+function speakBrowser(user, text) {
+  const sayName = document.getElementById('usernameToggle').checked;
+  const fullText = sayName ? `${user} bilang, ${text}` : text;
+
+  return new Promise((resolve) => {
+    const utt = new SpeechSynthesisUtterance(fullText);
+    utt.lang   = document.getElementById('langSelect').value === 'id' ? 'id-ID' : 'en-US';
+    utt.volume = parseFloat(document.getElementById('volSlider').value);
+    utt.rate   = 1;
+    utt.onend  = resolve;
+    utt.onerror= resolve;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utt);
+  });
+}
+
+/* ══════════ QUEUE ══════════ */
+function speak(user, text) {
+  if(!document.getElementById('ttsToggle').checked) return;
+  if(ttsQueue.length >= MAX_QUEUE){ showToast('Antrian penuh, skip.',true); return; }
+  ttsQueue.push({user, text});
+  updateQueueUI();
+  if(!isSpeaking) processQueue();
+}
+
+async function processQueue() {
+  if(!ttsQueue.length){ isSpeaking=false; setSilentState(); return; }
+  isSpeaking = true;
+  const item = ttsQueue.shift();
+  updateQueueUI();
+  try {
+    if(item.user === '__sfx__') {
+      await playGiftSfx();
+    } else {
+      const mode = document.getElementById('voiceModeSelect').value;
+      if(mode === 'server') await speakServer(item.user, item.text);
+      else await speakBrowser(item.user, item.text);
+    }
+  } catch(_) {}
+  isSpeaking = false;
+  processQueue();
+}
+
+function clearQueue() {
+  ttsQueue = [];
+  if(currentAudio){ currentAudio.pause(); currentAudio=null; }
+  window.speechSynthesis.cancel();
+  isSpeaking = false;
+  setSilentState(); updateQueueUI();
+  showToast('Antrian dikosongkan');
+}
+function skipCurrent() {
+  if(currentAudio){ currentAudio.pause(); currentAudio=null; }
+  window.speechSynthesis.cancel();
+  isSpeaking = false;
+  processQueue();
+}
+function updateQueueUI() {
+  const n = ttsQueue.length;
+  document.getElementById('queueCount').textContent = n;
+  document.getElementById('queueFill').style.width = Math.min(n/MAX_QUEUE*100,100)+'%';
+}
+
+/* ══════════ SPEAKING STATE ══════════ */
+function setSpeakingState(user, text) {
+  document.getElementById('speakerIcon').textContent='🔊';
+  document.getElementById('speakingUser').textContent=`🎙 ${user.toUpperCase()}`;
+  const el=document.getElementById('speakingText');
+  el.textContent=text; el.classList.remove('silent-state');
+  document.getElementById('waveAnim').style.display='flex';
+}
+function setSilentState() {
+  document.getElementById('speakerIcon').textContent='🔇';
+  document.getElementById('speakingUser').textContent='TIDAK ADA YANG BERBICARA';
+  const el=document.getElementById('speakingText');
+  el.textContent='Menunggu komentar masuk...'; el.classList.add('silent-state');
+  document.getElementById('waveAnim').style.display='none';
+}
+
+/* ══════════ DEMO ══════════ */
+const DEMO_DATA=[
+  ['budi_123','Halo kak lagi live yaa','chat'],['siti_cantik','Keren banget kontennya','chat'],
+  ['rizky_game','Aku udah follow dari tadi','chat'],['maya_flower','Request lagu dong kak','chat'],
+  ['dimas_bro','Wkwk lucu banget','chat'],['nadia_putri','Semangat terus kak','chat'],
+  ['tommy_s','Mantap jiwa kak','chat'],['rara_sweet','mengirim 5x Rose Gift','gift'],
+  ['fira_b','bergabung ke live','join'],['dewi_c','mengirim 10x TikTok Galaxy','gift'],
+  ['arif_tech','Ada tutorial gak kak','chat'],['lisa_v','Ikut nonton dari Surabaya nih','chat'],
+];
+let demoIdx=0;
+function toggleDemo(){
+  isDemoRunning=!isDemoRunning;
+  const btn=document.getElementById('demoBtn');
+  if(isDemoRunning){
+    btn.textContent='⏹ Stop'; btn.style.borderColor='#ff4444'; btn.style.color='#ff4444';
+    setStatus('connected','DEMO MODE');
+    demoInterval=setInterval(()=>{
+      const [u,t,tp]=DEMO_DATA[demoIdx%DEMO_DATA.length];
+      if(tp==='gift'&&!document.getElementById('giftToggle').checked){demoIdx++;return;}
+      if(tp==='join'&&!document.getElementById('joinToggle').checked){demoIdx++;return;}
+      addComment(u,t,tp); demoIdx++;
+    },3000);
+  } else {
+    clearInterval(demoInterval);
+    btn.textContent='▶ Demo'; btn.style.borderColor=''; btn.style.color='';
+    setStatus('offline','OFFLINE'); showToast('Demo dihentikan');
+  }
+}
+
+/* ══════════ COMMENTS ══════════ */
+async function addComment(user,text,type='chat',avatar=''){
+  if(!user)user='anonim';
+  if(!text?.trim())return;
+  comments.unshift({user,text:text.trim(),type,avatar,time:new Date(),id:Date.now()});
+  if(comments.length>200)comments.length=200;
+  renderFeed();
+  // Gift: play SFX first (if enabled & before-TTS mode), then TTS
+  if(type==='gift' && giftSfxUrl && document.getElementById('sfxEnabled').checked) {
+    const before = document.getElementById('sfxBeforeTts').checked;
+    if(before) {
+      await playGiftSfx();
+      speak(user, text.trim());
+    } else {
+      speak(user, text.trim());
+      // SFX after TTS: queue it
+      ttsQueue.push({user:'__sfx__', text:'__sfx__'});
+      updateQueueUI();
+    }
+  } else {
+    speak(user,text.trim());
+  }
+}
+function addManual(){
+  const u=document.getElementById('manualUser').value.trim()||'Manual';
+  const t=document.getElementById('manualText').value.trim();
+  if(!t)return;
+  addComment(u,t,'chat');
+  document.getElementById('manualText').value='';
+}
+
+/* ══════════ TABS & RENDER ══════════ */
+function setTab(t){
+  currentTab=t;
+  document.querySelectorAll('.tab').forEach(el=>el.classList.toggle('active',el.dataset.tab===t));
+  renderFeed();
+}
+function renderFeed(){
+  const feed=document.getElementById('feed');
+  const filtered=currentTab==='all'?comments:comments.filter(c=>c.type===currentTab);
+  document.getElementById('feedCount').textContent=`(${filtered.length})`;
+  if(!filtered.length){
+    feed.innerHTML='<div class="empty-feed"><div class="big">💬</div><div>Belum ada komentar di tab ini.</div></div>'; return;
+  }
+  feed.innerHTML=filtered.slice(0,100).map(c=>{
+    const bg=COLORS[c.user.charCodeAt(0)%COLORS.length];
+    const t=c.time.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    const tag={chat:'chat',gift:'gift 🎁',join:'join'}[c.type]||c.type;
+    const avHtml=c.avatar?`<div class="avatar"><img src="${esc(c.avatar)}" onerror="this.parentNode.innerHTML='${c.user[0].toUpperCase()}'"/></div>`:`<div class="avatar" style="background:${bg}">${c.user[0].toUpperCase()}</div>`;
+    return `<div class="comment-item type-${c.type}" onclick="replayItem('${esc(c.user)}','${esc(c.text)}')">${avHtml}<div class="comment-body"><div class="comment-user">@${esc(c.user)}</div><div class="comment-text">${esc(c.text)}</div></div><div class="comment-meta"><div class="comment-time">${t}</div><div class="type-tag ${c.type}">${tag}</div><button class="repeat-btn" title="Putar ulang">🔁</button></div></div>`;
+  }).join('');
+}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function replayItem(user,text){
+  if(currentAudio){currentAudio.pause();currentAudio=null;}
+  window.speechSynthesis.cancel(); isSpeaking=false;
+  ttsQueue.unshift({user,text}); processQueue();
+  showToast(`🔁 Putar ulang @${user}`);
+}
+function clearFeed(){comments=[];renderFeed();showToast('Riwayat dihapus');}
+
+/* ══════════ UI ══════════ */
+function setStatus(state,label){
+  document.getElementById('statusBadge').className='status-badge '+state;
+  document.getElementById('statusText').textContent=label;
+}
+let toastTimer;
+function showToast(msg,isErr=false){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className='toast show'+(isErr?' err':'');
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+/* ══════════ UNLOCK AUDIO (perlu tap pertama) ══════════ */
+let audioUnlocked = false;
+document.addEventListener('click', function unlockAudio() {
+  if(audioUnlocked) return;
+  audioUnlocked = true;
+  // Buat audio silent untuk unlock autoplay policy
+  const silent = new Audio('data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//OEAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV6urq6urq6urq6urq6urq6urq6urq6urq6v////////////////////////////////8AAAAATGF2YzU4LjU0AAAAAAAAAAAAAAAAJAAAAAAAAAAAASDs90hvAAAAAAAAAAAAAAAAAAAA//OEZAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQCAgICAgICAgICAgICAgICAgICAgICAgICA');
+  silent.play().catch(()=>{});
+  document.removeEventListener('click', unlockAudio);
+}, {once: true});
+
+
+/* ══════════ PWA INSTALL ══════════ */
+let deferredPrompt = null;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('installBanner').classList.add('show');
+});
+
+window.addEventListener('appinstalled', () => {
+  document.getElementById('installBanner').classList.remove('show');
+  showToast('✅ TikVoice berhasil diinstall!');
+  deferredPrompt = null;
+});
+
+async function doInstall() {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  const { outcome } = await deferredPrompt.userChoice;
+  if (outcome === 'accepted') showToast('🎉 Menginstall TikVoice...');
+  deferredPrompt = null;
+  document.getElementById('installBanner').classList.remove('show');
+}
+
+function dismissInstall() {
+  document.getElementById('installBanner').classList.remove('show');
+}
+
+/* ══════════ WAKE LOCK (cegah layar/app mati) ══════════ */
+let wakeLock = null;
+
+async function requestWakeLock() {
+  if (!('wakeLock' in navigator)) return;
+  try {
+    wakeLock = await navigator.wakeLock.request('screen');
+    document.getElementById('wakelockBadge').classList.add('active');
+    wakeLock.addEventListener('release', () => {
+      document.getElementById('wakelockBadge').classList.remove('active');
+    });
+  } catch (err) {
+    console.warn('WakeLock gagal:', err);
+  }
+}
+
+// Re-acquire wake lock saat app kembali ke foreground
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState === 'visible') {
+    await requestWakeLock();
+  }
+});
+
+/* ══════════ SERVICE WORKER ══════════ */
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js')
+    .then(() => console.log('SW registered'))
+    .catch(e => console.warn('SW error:', e));
+}
+
+/* ══════════ INIT ══════════ */
+renderFeed();
+initWS();
+requestWakeLock();
+</script>
+</body>
+</html>
